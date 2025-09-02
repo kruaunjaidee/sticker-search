@@ -47,7 +47,7 @@
             right: -30px;
             top: 5px;
         }
-        input, select, button {
+        input, button {
             padding: 10px;
             margin: 10px;
             font-size: 16px;
@@ -58,12 +58,12 @@
             box-sizing: border-box;
             font-family: 'Mitr', sans-serif;
         }
-        input, select {
+        input {
             background-color: #fff;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             border: 2px solid #ffccde;
         }
-        input:focus, select:focus {
+        input:focus {
             outline: none;
             border-color: #ff5e84;
         }
@@ -85,7 +85,7 @@
             border-radius: 20px;
             padding: 20px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
+            max-width: 600px;
             margin-left: auto;
             margin-right: auto;
         }
@@ -226,6 +226,52 @@
             margin: 5px 0;
             font-size: 14px;
         }
+        .format-info {
+            background-color: #f0f8ff;
+            padding: 8px;
+            border-radius: 8px;
+            margin: 5px 0;
+            font-size: 12px;
+            color: #666;
+        }
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            h1 {
+                font-size: 36px;
+            }
+            input, button {
+                max-width: 400px;
+            }
+            #result {
+                max-width: 800px;
+                padding: 30px;
+            }
+            #previewGallery {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 12px;
+            }
+            #previewGallery img {
+                height: 100px;
+            }
+            #stickerImage {
+                max-width: 250px;
+            }
+        }
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 24px;
+            }
+            input, button {
+                max-width: 280px;
+            }
+            #previewGallery {
+                grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+                gap: 6px;
+            }
+            #previewGallery img {
+                height: 60px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -244,13 +290,6 @@
     <div id="main">
         <h1>ค้นหา LINE Sticker</h1>
         <input type="number" id="stickerId" placeholder="ป้อน Sticker ID เช่น 31552153">
-        <select id="stickerFormat">
-            <option value="STATIC">STATIC</option>
-            <option value="ANIMATION">ANIMATION</option>
-            <option value="ANIMATION_SOUND">ANIMATION_SOUND</option>
-        </select>
-        <input type="number" id="priceTHB" placeholder="ป้อนราคา (THB) เช่น 55">
-        <input type="number" id="coins" placeholder="ป้อนจำนวน Coin เช่น 100">
         <button onclick="searchSticker()">ค้นหา</button>
         <div id="loadingSearch">กำลังค้นหา...</div>
         <div id="result"></div>
@@ -258,32 +297,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        function isMobileDevice() {
-            const userAgent = navigator.userAgent.toLowerCase();
-            return /iphone|ipad|ipod|android|webos|blackberry|iemobile|opera mini/i.test(userAgent);
-        }
-
-        function loadLiffScript(callback) {
-            const liffUrl = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
-            const script = document.createElement('script');
-            script.src = liffUrl;
-            script.async = true;
-            script.onload = () => {
-                console.log(`LIFF SDK loaded successfully from ${liffUrl}`);
-                callback();
-            };
-            script.onerror = () => {
-                console.error(`Failed to load LIFF SDK from ${liffUrl}`);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'ไม่สามารถโหลด LIFF SDK',
-                    text: 'กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองใหม่',
-                    confirmButtonText: 'ตกลง'
-                });
-            };
-            document.head.appendChild(script);
-        }
-
         function escapeHtml(str) {
             return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
@@ -304,22 +317,10 @@
             return null;
         }
 
-        function detectStickerType(author) {
-            if (author.includes('LY Corporation') || author.match(/LINE Friends|Disney|Sanrio|Pokemon|Gudetama/i)) {
-                return 'Official Sticker';
-            }
-            return 'Creators\' Sticker';
-        }
-
         async function initializeLiff() {
             console.log('Starting LIFF initialization');
             if (typeof liff === 'undefined') {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'LIFF SDK ไม่โหลด',
-                    text: 'ไม่สามารถโหลด LINE LIFF SDK ได้',
-                    confirmButtonText: 'ตกลง'
-                });
+                console.warn('LIFF SDK not loaded, skipping initialization');
                 return false;
             }
 
@@ -330,15 +331,12 @@
 
                 await liff.ready;
                 console.log('LIFF is ready');
-
-                document.getElementById('preloader').style.display = 'none';
-                document.getElementById('main').style.display = 'block';
                 return true;
             } catch (error) {
                 console.error('LIFF init error:', error);
                 Swal.fire({
                     icon: 'error',
-                    title: 'การเริ่มต้นล้มเหลว',
+                    title: 'การเริ่มต้น LIFF ล้มเหลว',
                     text: 'ไม่สามารถเริ่มต้น LIFF ได้: ' + error.message,
                     confirmButtonText: 'ตกลง'
                 });
@@ -366,7 +364,7 @@
         async function fetchStickerPage(stickerId, lang, attempt = 1, maxAttempts = 3) {
             const storeUrl = `https://store.line.me/stickershop/product/${stickerId}/${lang}`;
             const proxy = 'https://api.allorigins.win/raw?url=';
-            const fallbackProxy = 'https://corsproxy.io/?'; // Fallback proxy
+            const fallbackProxy = 'https://corsproxy.io/?';
             const proxyUrl = attempt === 1 ? proxy : fallbackProxy;
 
             try {
@@ -378,7 +376,7 @@
                         'Accept': 'text/html',
                         'Accept-Language': lang === 'th' ? 'th-TH,th;q=0.9' : lang === 'jp' ? 'ja-JP,ja;q=0.9' : 'en-US,en;q=0.9'
                     },
-                    signal: AbortSignal.timeout(10000) // 10s timeout
+                    signal: AbortSignal.timeout(10000)
                 });
                 if (!response.ok) {
                     throw new Error(`HTTP error ${response.status}`);
@@ -392,14 +390,14 @@
                 console.error(`Fetch error for ${lang} (Attempt ${attempt}):`, error.message);
                 if (attempt < maxAttempts) {
                     console.log(`Retrying with attempt ${attempt + 1}`);
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     return fetchStickerPage(stickerId, lang, attempt + 1, maxAttempts);
                 }
                 return null;
             }
         }
 
-        function createFlexMessage(url, title, author, coins, imageUrl, stickerType, stickerFormat, priceDisplay, liffId) {
+        function createFlexMessage(url, title, author, coins, imageUrl, stickerFormat, priceDisplay, liffId) {
             return {
                 type: "bubble",
                 size: "kilo",
@@ -465,16 +463,6 @@
                             type: "box",
                             layout: "vertical",
                             contents: [
-                                {
-                                    type: "text",
-                                    text: `ประเภท: ${stickerType}`,
-                                    size: "xs",
-                                    color: "#FF4444",
-                                    wrap: true,
-                                    gravity: "center",
-                                    align: "start",
-                                    weight: "bold"
-                                },
                                 {
                                     type: "text",
                                     text: `รูปแบบ: ${stickerFormat}`,
@@ -578,7 +566,7 @@
                                     action: {
                                         type: "uri",
                                         label: "แชร์",
-                                        uri: `https://liff.line.me/${liffId}?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&coins=${encodeURIComponent(coins)}&imageUrl=${encodeURIComponent(imageUrl)}&stickerType=${encodeURIComponent(stickerType)}&stickerFormat=${encodeURIComponent(stickerFormat)}&priceTHB=${encodeURIComponent(priceDisplay)}`
+                                        uri: `https://liff.line.me/${liffId}?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&coins=${encodeURIComponent(coins)}&imageUrl=${encodeURIComponent(imageUrl)}&stickerFormat=${encodeURIComponent(stickerFormat)}&priceTHB=${encodeURIComponent(priceDisplay)}`
                                     },
                                     margin: "sm"
                                 }
@@ -600,37 +588,106 @@
             };
         }
 
+        async function getAllStickerImages(stickerId, htmlText) {
+            const previewImages = [];
+            const stickerIds = [];
+            
+            try {
+                const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+                
+                // Method 1: Extract from .FnStickerList
+                const stickerWrap = doc.querySelector('.mdCMN09Ul.FnStickerList');
+                if (stickerWrap) {
+                    const items = stickerWrap.querySelectorAll('.FnStickerPreviewItem');
+                    items.forEach(item => {
+                        const dataPreview = item.getAttribute('data-preview');
+                        if (dataPreview) {
+                            try {
+                                const parsed = JSON.parse(dataPreview.replace(/'/g, '"'));
+                                // Try all available formats
+                                const urls = [
+                                    parsed.staticUrl,
+                                    parsed.animationUrl, 
+                                    parsed.soundUrl,
+                                    parsed.fallbackStaticUrl
+                                ].filter(url => url && url.includes('stickershop'));
+                                
+                                if (urls.length > 0) {
+                                    previewImages.push(urls[0]);
+                                    stickerIds.push(parsed.id || '');
+                                }
+                            } catch (error) {
+                                console.error('JSON parse error:', error.message);
+                            }
+                        }
+                    });
+                }
+
+                // Method 2: Extract from all sticker images if we have less than 8
+                if (previewImages.length < 8) {
+                    const allImages = doc.querySelectorAll('img[src*="stickershop"]');
+                    allImages.forEach(img => {
+                        const src = img.src;
+                        if (src && (
+                            src.includes('sticker/') ||
+                            src.includes('sticker_animation/') ||
+                            src.includes('sticker_popup/') ||
+                            src.includes('sticker_effect/')
+                        ) && !previewImages.includes(src)) {
+                            previewImages.push(src);
+                            const match = src.match(/sticker\/(\d+)/);
+                            stickerIds.push(match ? match[1] : '');
+                        }
+                    });
+                }
+
+                // Method 3: Generate URLs if still insufficient
+                if (previewImages.length < 8) {
+                    console.log('Generating additional sticker URLs...');
+                    for (let i = 1; i <= 40; i++) {
+                        if (previewImages.length >= 40) break;
+                        
+                        const formats = [
+                            `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/${i}/iPhone/sticker.png`,
+                            `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/${i}/android/sticker.png`,
+                            `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/${i}/ANDROID/sticker.png`
+                        ];
+                        
+                        for (const url of formats) {
+                            if (!previewImages.includes(url)) {
+                                previewImages.push(url);
+                                stickerIds.push(i.toString());
+                                break;
+                            }
+                        }
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error extracting sticker images:', error);
+            }
+
+            return { previewImages: previewImages.slice(0, 40), stickerIds: stickerIds.slice(0, 40) };
+        }
+
+        function detectStickerFormat(previewImages) {
+            if (previewImages.some(url => url.includes('animation') || url.includes('APNG'))) {
+                if (previewImages.some(url => url.includes('sound'))) {
+                    return 'ANIMATION_SOUND';
+                }
+                return 'ANIMATION';
+            }
+            return 'STATIC';
+        }
+
         async function searchSticker() {
             const stickerId = document.getElementById('stickerId').value.trim();
-            const stickerFormat = document.getElementById('stickerFormat').value;
-            const priceTHB = document.getElementById('priceTHB').value.trim();
-            const coins = document.getElementById('coins').value.trim();
 
             if (!stickerId || isNaN(stickerId)) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Sticker ID ไม่ถูกต้อง',
                     text: 'กรุณาป้อน Sticker ID ที่เป็นตัวเลข',
-                    confirmButtonText: 'ตกลง'
-                });
-                return;
-            }
-
-            if (!priceTHB || isNaN(priceTHB) || parseFloat(priceTHB) < 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'ราคาไม่ถูกต้อง',
-                    text: 'กรุณาป้อนราคา (THB) ที่เป็นตัวเลขและไม่ติดลบ',
-                    confirmButtonText: 'ตกลง'
-                });
-                return;
-            }
-
-            if (!coins || isNaN(coins) || parseInt(coins) < 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'จำนวน Coin ไม่ถูกต้อง',
-                    text: 'กรุณาป้อนจำนวน Coin ที่เป็นตัวเลขและไม่ติดลบ',
                     confirmButtonText: 'ตกลง'
                 });
                 return;
@@ -650,10 +707,13 @@
                 const languages = ['th', 'en', 'jp'];
                 let regionData = {};
                 let selectedLang = null;
+                let bestHtmlText = null;
 
                 for (const lang of languages) {
                     const htmlText = await fetchStickerPage(stickerId, lang);
                     if (htmlText) {
+                        if (!bestHtmlText) bestHtmlText = htmlText;
+                        
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(htmlText, 'text/html');
                         const jsonLd = extractProductJsonLd(htmlText);
@@ -664,14 +724,24 @@
                         }
                         let author = jsonLd?.author?.name || jsonLd?.offers?.seller?.name || doc.querySelector('[data-test="sticker-author"]')?.textContent.trim() || 'ไม่พบผู้สร้าง';
                         let description = jsonLd?.description || doc.querySelector('.mdCMN38Item01Txt')?.textContent.trim() || 'ไม่มีรายละเอียด';
+                        let price = jsonLd?.offers?.price || doc.querySelector('.mdCMN38Item01Price')?.textContent.trim() || 'ไม่พบราคา';
+                        let priceCurrency = jsonLd?.offers?.priceCurrency || 'THB';
+                        let coins = 0;
+
+                        // Convert price to coins (approximation: 1 THB ≈ 2 Coins)
+                        if (price && !isNaN(parseFloat(price))) {
+                            coins = Math.round(parseFloat(price) * 2);
+                        } else if (price.toLowerCase().includes('free')) {
+                            coins = 0;
+                            price = '0';
+                        }
 
                         regionData[lang] = {
                             title,
                             author,
-                            price: `${priceTHB} THB`,
+                            price: `${price} ${priceCurrency}`,
                             description,
-                            stickerType: detectStickerType(author),
-                            stickerFormat
+                            coins
                         };
 
                         if (!selectedLang) {
@@ -682,78 +752,26 @@
                     }
                 }
 
-                if (!selectedLang) {
+                if (!selectedLang || !bestHtmlText) {
                     throw new Error(`ไม่พบสติกเกอร์สำหรับ ID: ${stickerId} ในทุกภูมิภาค`);
                 }
 
                 const data = regionData[selectedLang];
-                const { title, author, description, stickerType } = data;
+                const { title, author, description, price, coins } = data;
 
-                let priceDisplay = parseFloat(priceTHB) === 0 ? '0' : `${Math.floor(parseFloat(priceTHB))}`;
-                let coinValue = parseInt(coins);
+                // Get all sticker images
+                const { previewImages, stickerIds } = await getAllStickerImages(stickerId, bestHtmlText);
+                
+                // Auto-detect sticker format
+                const stickerFormat = detectStickerFormat(previewImages);
 
-                let previewImages = [];
-                let stickerIds = [];
-                const htmlText = await fetchStickerPage(stickerId, selectedLang);
-                const doc = new DOMParser().parseFromString(htmlText, 'text/html');
-                const stickerWrap = doc.querySelector('.mdCMN09Ul.FnStickerList');
-                if (stickerWrap) {
-                    const items = stickerWrap.querySelectorAll('.FnStickerPreviewItem');
-                    items.forEach(item => {
-                        const dataPreview = item.getAttribute('data-preview');
-                        if (dataPreview) {
-                            try {
-                                const parsed = JSON.parse(dataPreview.replace(/'/g, '"'));
-                                let url = '';
-                                if (stickerFormat === 'STATIC') {
-                                    url = parsed.staticUrl || parsed.fallbackStaticUrl || '';
-                                } else if (stickerFormat === 'ANIMATION') {
-                                    url = parsed.animationUrl || parsed.fallbackStaticUrl || '';
-                                } else if (stickerFormat === 'ANIMATION_SOUND') {
-                                    url = parsed.soundUrl || parsed.animationUrl || parsed.fallbackStaticUrl || '';
-                                }
-                                if (url.includes('stickershop')) {
-                                    previewImages.push(url);
-                                    stickerIds.push(parsed.id || '');
-                                    console.log(`Sticker ID: ${parsed.id}, Selected URL: ${url}`);
-                                }
-                            } catch (error) {
-                                console.error('JSON parse error:', error.message);
-                            }
-                        }
-                    });
-                }
-
-                if (!previewImages.length) {
-                    console.log('No preview images found in .FnStickerList, trying fallback method');
-                    const images = doc.querySelectorAll('img[src*="stickershop"], [style*="stickershop"]');
-                    previewImages = Array.from(images)
-                        .map(element => {
-                            if (element.tagName === 'IMG' && element.src.includes('stickershop')) {
-                                return element.src;
-                            }
-                            const style = element.style.backgroundImage;
-                            const match = style.match(/url\(["']?(.+?)["']?\)/);
-                            return match && match[1].includes('stickershop') ? match[1] : '';
-                        })
-                        .filter(src => src && (
-                            src.includes('sticker/') ||
-                            src.includes('sticker_animation/') ||
-                            src.includes('sticker_popup/') ||
-                            src.includes('sticker_effect/')
-                        ));
-                    stickerIds = previewImages
-                        .map(src => src.match(/sticker\/(\d+)/)?.[1] || '')
-                        .filter(id => id);
-                }
-
-                const finalPreviewImages = previewImages.slice(0, 40);
+                let priceDisplay = price.includes('0') && coins === 0 ? 'ฟรี' : price;
 
                 const escapedTitle = escapeHtml(title);
                 const escapedAuthor = escapeHtml(author);
-                const escapedStickerType = escapeHtml(stickerType);
                 const escapedStickerFormat = escapeHtml(stickerFormat);
                 const escapedDescription = escapeHtml(description);
+                const escapedPriceDisplay = escapeHtml(priceDisplay);
 
                 let regionInfoHtml = '';
                 for (const lang of languages) {
@@ -763,39 +781,44 @@
                             <div class="region-info">
                                 <p><strong>ภูมิภาค: ${lang.toUpperCase()}</strong></p>
                                 <p>ราคา: ${region.price}</p>
-                                <p>รูปแบบ: ${region.stickerFormat}</p>
                             </div>
                         `;
                     }
                 }
 
+                const formatInfo = {
+                    'STATIC': 'สติกเกอร์แบบคงที่ (ภาพนิ่ง)',
+                    'ANIMATION': 'สติกเกอร์แบบเคลื่อนไหว (ไม่มีเสียง)', 
+                    'ANIMATION_SOUND': 'สติกเกอร์แบบเคลื่อนไหวพร้อมเสียง'
+                };
+
                 resultDiv.innerHTML = `
                     <img id="stickerImage" src="${imageUrl}" alt="Sticker Image" onerror="this.src='https://via.placeholder.com/180'">
                     <p><strong>ชื่อสติกเกอร์:</strong> ${title}</p>
                     <p><strong>ผู้สร้าง:</strong> ${author}</p>
-                    <p><strong>ประเภท:</strong> ${stickerType}</p>
                     <p><strong>รูปแบบ:</strong> ${stickerFormat}</p>
+                    <div class="format-info">${formatInfo[stickerFormat] || 'ไม่ทราบรูปแบบ'}</div>
                     <p><strong>Sticker ID:</strong> ${stickerId}</p>
-                    <p><strong>จำนวนสติกเกอร์:</strong> ${stickerIds.length || 'ไม่พบข้อมูล'}</p>
+                    <p><strong>จำนวนสติกเกอร์:</strong> ${previewImages.length || 'ไม่พบข้อมูล'}</p>
                     <p><strong>รายละเอียด:</strong> ${description}</p>
-                    <p><strong>ราคา:</strong> ${priceDisplay} THB ${coinValue > 0 ? `<img src="https://aliyahaunjo.github.io/image/LINE-COIN.png" class="coin-icon" alt="LINE Coin"> ${coinValue} Coin` : ''}</p>
+                    <p><strong>ราคา:</strong> ${priceDisplay} ${coins > 0 ? `<img src="https://aliyahaunjo.github.io/image/LINE-COIN.png" class="coin-icon" alt="LINE Coin"> ${coins} Coin` : ''}</p>
                     <button onclick="openSticker('https://store.line.me/stickershop/product/${stickerId}/${selectedLang}')">ดู Sticker ในเบราว์เซอร์</button>
                     <br>
-                    <button onclick="shareSticker('https://store.line.me/stickershop/product/${stickerId}/${selectedLang}', '${escapedTitle}', '${escapedAuthor}', ${coinValue}, '${imageUrl}', '${escapedStickerType}', '${escapedStickerFormat}', '${priceDisplay}')">แชร์ Sticker</button>
+                    <button onclick="shareSticker('https://store.line.me/stickershop/product/${stickerId}/${selectedLang}', '${escapedTitle}', '${escapedAuthor}', ${coins}, '${imageUrl}', '${escapedStickerFormat}', '${escapedPriceDisplay}')">แชร์ Sticker</button>
                     <h4>ข้อมูลตามภูมิภาค</h4>
                     ${regionInfoHtml}
-                    <h4>ตัวอย่างสติกเกอร์</h4>
+                    <h4>ตัวอย่างสติกเกอร์ (${previewImages.length} ภาพ)</h4>
                     <div id="previewGallery">
-                        ${finalPreviewImages.length ? finalPreviewImages.map((src, i) => `<img src="${src}" alt="Sticker ${i + 1}" title="ID: ${stickerIds[i] || 'N/A'}">`).join('') : '<p>ไม่มีตัวอย่าง</p>'}
+                        ${previewImages.length ? previewImages.map((src, i) => `<img src="${src}" alt="Sticker ${i + 1}" title="ID: ${stickerIds[i] || 'N/A'}" onerror="this.style.display='none'">`).join('') : '<p>ไม่มีตัวอย่าง</p>'}
                     </div>
-                    ${stickerIds.length > 0 ? `<p>รหัสสติกเกอร์: ${stickerIds.slice(0, 10).join(', ')}${stickerIds.length > 10 ? ' ...' : ''}</p>` : ''}
+                    ${stickerIds.length > 0 ? `<p>รหัสสติกเกอร์: ${stickerIds.slice(0, 10).join(', ')}${stickerIds.length > 10 ? ` และอีก ${stickerIds.length - 10} รหัส...` : ''}</p>` : ''}
                 `;
             } catch (error) {
                 console.error('Search error:', error.message);
                 resultDiv.innerHTML = `
                     <p>เกิดข้อผิดพลาด: ${error.message}</p>
                     <p>ลอง ID อื่น: <button onclick="document.getElementById('stickerId').value='31552153';searchSticker()">31552153</button></p>
-                    <button onclick="document.getElementById('stickerId').value='';resultDiv.innerHTML='';">ค้นหาใหม่</button>
+                    <button onclick="document.getElementById('stickerId').value='';document.getElementById('result').innerHTML='';">ค้นหาใหม่</button>
                 `;
             } finally {
                 loadingSearch.style.display = 'none';
@@ -806,81 +829,82 @@
             window.open(url, '_blank');
         }
 
-        async function shareSticker(url, title, author, coins, imageUrl, stickerType, stickerFormat, priceDisplay) {
+        async function shareSticker(url, title, author, coins, imageUrl, stickerFormat, priceDisplay) {
             try {
-                if (typeof liff === 'undefined') {
-                    throw new Error('LIFF SDK ไม่โหลด');
-                }
-
-                await liff.ready;
-
-                if (!liff.isInClient()) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'ต้องใช้ใน LINE',
-                        text: 'กรุณาเปิดแอปนี้ใน LINE เพื่อแชร์สติกเกอร์',
-                        confirmButtonText: 'เปิดใน LINE',
-                        showCancelButton: true,
-                        cancelButtonText: 'ยกเลิก'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = 'line://app/2000563749-VxLJ4OdX';
-                        }
-                    });
-                    return;
-                }
-
-                if (!liff.isLoggedIn()) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'กรุณาล็อกอิน',
-                        text: 'คุณต้องล็อกอินด้วยบัญชี LINE เพื่อแชร์สติกเกอร์',
-                        confirmButtonText: 'ล็อกอิน',
-                        showCancelButton: true,
-                        cancelButtonText: 'ยกเลิก'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            liff.login({ redirectUri: window.location.href });
-                        }
-                    });
-                    return;
-                }
-
-                if (!liff.isApiAvailable('shareTargetPicker')) {
-                    throw new Error('เวอร์ชัน LIFF ไม่รองรับการแชร์');
-                }
-
-                document.getElementById('main').style.display = 'none';
-                document.getElementById('shareLoader').style.display = 'flex';
-
                 const liffId = '2000563749-VxLJ4OdX';
-                const flexMessage = createFlexMessage(url, title, author, coins, imageUrl, stickerType, stickerFormat, priceDisplay, liffId);
+                const shareUrl = `https://liff.line.me/${liffId}?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&author=${encodeURIComponent(author)}&coins=${encodeURIComponent(coins)}&imageUrl=${encodeURIComponent(imageUrl)}&stickerFormat=${encodeURIComponent(stickerFormat)}&priceTHB=${encodeURIComponent(priceDisplay)}`;
 
-                const result = await liff.shareTargetPicker([{
-                    type: "flex",
-                    altText: `พบ LINE Sticker: ${title}`,
-                    contents: flexMessage
-                }]);
+                if (typeof liff !== 'undefined' && liff.isInClient()) {
+                    await liff.ready;
+                    if (!liff.isLoggedIn()) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'กรุณาล็อกอิน',
+                            text: 'คุณต้องล็อกอินด้วยบัญชี LINE เพื่อแชร์สติกเกอร์',
+                            confirmButtonText: 'ล็อกอิน',
+                            showCancelButton: true,
+                            cancelButtonText: 'ยกเลิก'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                liff.login({ redirectUri: window.location.href });
+                            }
+                        });
+                        return;
+                    }
 
-                if (result) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'แชร์สำเร็จ!',
-                        text: 'สติกเกอร์ถูกส่งเรียบร้อยแล้ว',
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        liff.closeWindow();
-                    });
+                    if (!liff.isApiAvailable('shareTargetPicker')) {
+                        throw new Error('เวอร์ชัน LIFF ไม่รองรับการแชร์');
+                    }
+
+                    document.getElementById('main').style.display = 'none';
+                    document.getElementById('shareLoader').style.display = 'flex';
+
+                    const flexMessage = createFlexMessage(url, title, author, coins, imageUrl, stickerFormat, priceDisplay, liffId);
+
+                    const result = await liff.shareTargetPicker([{
+                        type: "flex",
+                        altText: `พบ LINE Sticker: ${title}`,
+                        contents: flexMessage
+                    }]);
+
+                    if (result) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'แชร์สำเร็จ!',
+                            text: 'สติกเกอร์ถูกส่งเรียบร้อยแล้ว',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            liff.closeWindow();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'แชร์ถูกยกเลิก',
+                            text: 'คุณเลือกไม่แชร์สติกเกอร์',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            liff.closeWindow();
+                        });
+                    }
                 } else {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'แชร์ถูกยกเลิก',
-                        text: 'คุณเลือกไม่แชร์สติกเกอร์',
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        liff.closeWindow();
+                    // Fallback for desktop: Copy share URL to clipboard
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'คัดลอกลิงก์สำเร็จ',
+                            text: 'ลิงก์สำหรับแชร์สติกเกอร์ถูกคัดลอกไปยังคลิปบอร์ดแล้ว',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }).catch(() => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'คัดลอกลิงก์ล้มเหลว',
+                            text: 'กรุณาคัดลอกลิงก์ด้วยตนเอง: ' + shareUrl,
+                            confirmButtonText: 'ตกลง'
+                        });
                     });
                 }
             } catch (error) {
@@ -902,7 +926,6 @@
             const author = urlParams.get('author');
             const coins = parseInt(urlParams.get('coins')) || 0;
             const imageUrl = urlParams.get('imageUrl');
-            const stickerType = urlParams.get('stickerType') || 'Official Sticker';
             const stickerFormat = urlParams.get('stickerFormat') || 'STATIC';
             const priceTHB = urlParams.get('priceTHB') || '0';
 
@@ -916,28 +939,41 @@
                     decodeURIComponent(author),
                     coins,
                     decodeURIComponent(imageUrl),
-                    decodeURIComponent(stickerType),
                     decodeURIComponent(stickerFormat),
                     decodeURIComponent(priceTHB)
                 );
             }
         }
 
-        window.onload = function() {
-            console.log('Page loaded');
-            if (!isMobileDevice()) {
+        function loadLiffScript(callback) {
+            const liffUrl = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
+            const script = document.createElement('script');
+            script.src = liffUrl;
+            script.async = true;
+            script.onload = () => {
+                console.log(`LIFF SDK loaded successfully from ${liffUrl}`);
+                callback();
+            };
+            script.onerror = () => {
+                console.error(`Failed to load LIFF SDK from ${liffUrl}`);
                 document.getElementById('preloader').style.display = 'none';
+                document.getElementById('main').style.display = 'block';
                 Swal.fire({
-                    icon: 'error',
-                    title: 'อุปกรณ์ไม่รองรับ',
-                    text: 'แอปนี้ใช้งานได้เฉพาะบนมือถือเท่านั้น',
+                    icon: 'warning',
+                    title: 'LIFF SDK ไม่โหลด',
+                    text: 'การแชร์ผ่าน LINE จะไม่ทำงาน แต่คุณยังสามารถค้นหาและดูสติกเกอร์ได้',
                     confirmButtonText: 'ตกลง'
                 });
-                return;
-            }
+            };
+            document.head.appendChild(script);
+        }
 
+        window.onload = function() {
+            console.log('Page loaded');
             loadLiffScript(async () => {
                 const initialized = await initializeLiff();
+                document.getElementById('preloader').style.display = 'none';
+                document.getElementById('main').style.display = 'block';
                 if (initialized) {
                     await handleLiffCallback();
                 }
@@ -945,8 +981,6 @@
 
             // Set default values
             document.getElementById('stickerId').value = '31552153';
-            document.getElementById('priceTHB').value = '55';
-            document.getElementById('coins').value = '100';
         };
     </script>
 </body>
