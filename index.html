@@ -98,26 +98,15 @@
             border-radius: 15px;
             border: 3px solid #ffccde;
         }
-        #previewGallery {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin: 15px 0;
-        }
         #previewGallery img {
-            width: 100%;
-            height: 70px;
-            object-fit: contain;
+            width: 70px;
+            margin: 8px;
             border: 2px solid #e6f9f0;
             border-radius: 10px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            background-color: #fff;
+            transition: transform 0.2s;
         }
         #previewGallery img:hover {
             transform: scale(1.1);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-            z-index: 10;
-            position: relative;
         }
         #loadingSearch {
             display: none;
@@ -313,148 +302,6 @@
                 return 'Official Sticker';
             }
             return 'Creators\' Sticker';
-        }
-
-        // ปรับปรุงฟังก์ชันสำหรับดึงภาพตัวอย่าง
-        function extractStickerImages(htmlText, stickerId) {
-            console.log('Starting image extraction for sticker ID:', stickerId);
-            
-            let previewImages = [];
-            let stickerIds = [];
-            
-            try {
-                // วิธีที่ 1: ค้นหาจาก JSON data ใน data-preview attributes
-                const dataPreviewRegex = /data-preview\s*=\s*['"](.*?)['"](?=\s|>)/gs;
-                let match;
-                while ((match = dataPreviewRegex.exec(htmlText)) !== null) {
-                    try {
-                        const jsonStr = match[1].replace(/&quot;/g, '"').replace(/'/g, '"');
-                        const parsed = JSON.parse(jsonStr);
-                        
-                        // ลองหา URL ที่เป็นไปได้
-                        const possibleUrls = [
-                            parsed.staticUrl,
-                            parsed.popupUrl,
-                            parsed.animationUrl,
-                            parsed.soundUrl,
-                            parsed.effectUrl
-                        ].filter(url => url && url.includes('stickershop'));
-                        
-                        if (possibleUrls.length > 0) {
-                            previewImages.push(possibleUrls[0]);
-                            stickerIds.push(parsed.id || '');
-                            console.log(`Found sticker from data-preview: ID ${parsed.id}, URL: ${possibleUrls[0]}`);
-                        }
-                    } catch (error) {
-                        console.warn('Failed to parse data-preview JSON:', error.message);
-                    }
-                }
-
-                // วิธีที่ 2: ค้นหา URL patterns ที่เป็น sticker โดยตรง
-                const urlPatterns = [
-                    // Static stickers
-                    new RegExp(`https://stickershop\\.line-scdn\\.net/stickershop/v1/sticker/${stickerId}/(\\d+)/[^\\s"']+`, 'g'),
-                    // Animation stickers
-                    new RegExp(`https://stickershop\\.line-scdn\\.net/stickershop/v1/sticker_animation/${stickerId}/(\\d+)/[^\\s"']+`, 'g'),
-                    // Popup stickers
-                    new RegExp(`https://stickershop\\.line-scdn\\.net/stickershop/v1/sticker_popup/${stickerId}/(\\d+)/[^\\s"']+`, 'g'),
-                    // Sound stickers
-                    new RegExp(`https://stickershop\\.line-scdn\\.net/stickershop/v1/sticker_sound/${stickerId}/(\\d+)/[^\\s"']+`, 'g')
-                ];
-
-                urlPatterns.forEach(pattern => {
-                    let urlMatch;
-                    while ((urlMatch = pattern.exec(htmlText)) !== null) {
-                        const fullUrl = urlMatch[0];
-                        const individualStickerId = urlMatch[1];
-                        
-                        // หลีกเลี่ยง URL ที่ซ้ำกัน
-                        if (!previewImages.includes(fullUrl)) {
-                            previewImages.push(fullUrl);
-                            stickerIds.push(individualStickerId);
-                            console.log(`Found sticker from URL pattern: ID ${individualStickerId}, URL: ${fullUrl}`);
-                        }
-                    }
-                });
-
-                // วิธีที่ 3: ค้นหาจาก img tags และ background-image
-                const imgRegex = /<img[^>]+src\s*=\s*['"]([^'"]*stickershop[^'"]*)['"]/g;
-                let imgMatch;
-                while ((imgMatch = imgRegex.exec(htmlText)) !== null) {
-                    const imgUrl = imgMatch[1];
-                    if (imgUrl.includes(`/${stickerId}/`) && !previewImages.includes(imgUrl)) {
-                        previewImages.push(imgUrl);
-                        // พยายามดึง sticker ID จาก URL
-                        const stickerIdMatch = imgUrl.match(/\/(\d+)\//g);
-                        if (stickerIdMatch && stickerIdMatch.length >= 2) {
-                            stickerIds.push(stickerIdMatch[1].replace(/\//g, ''));
-                        } else {
-                            stickerIds.push('');
-                        }
-                        console.log(`Found sticker from img tag: URL: ${imgUrl}`);
-                    }
-                }
-
-                // วิธีที่ 4: ค้นหาจาก background-image ใน style attributes
-                const bgImageRegex = /background-image\s*:\s*url\(['"]?([^'"]*stickershop[^'"]*)['"]?\)/g;
-                let bgMatch;
-                while ((bgMatch = bgImageRegex.exec(htmlText)) !== null) {
-                    const bgUrl = bgMatch[1];
-                    if (bgUrl.includes(`/${stickerId}/`) && !previewImages.includes(bgUrl)) {
-                        previewImages.push(bgUrl);
-                        const stickerIdMatch = bgUrl.match(/\/(\d+)\//g);
-                        if (stickerIdMatch && stickerIdMatch.length >= 2) {
-                            stickerIds.push(stickerIdMatch[1].replace(/\//g, ''));
-                        } else {
-                            stickerIds.push('');
-                        }
-                        console.log(`Found sticker from background-image: URL: ${bgUrl}`);
-                    }
-                }
-
-                // วิธีที่ 5: สร้าง URL patterns แบบ fallback สำหรับ sticker ทั่วไป
-                if (previewImages.length < 8) {
-                    console.log('Not enough images found, trying fallback method...');
-                    
-                    // พยายามสร้าง URL สำหรับ sticker โดยการทาย pattern
-                    const baseUrls = [
-                        `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}`,
-                        `https://stickershop.line-scdn.net/stickershop/v1/sticker_animation/${stickerId}`,
-                        `https://stickershop.line-scdn.net/stickershop/v1/sticker_popup/${stickerId}`
-                    ];
-                    
-                    // ลองหา pattern ของ sticker ID ที่มีอยู่
-                    const existingIds = stickerIds.filter(id => id && !isNaN(id));
-                    if (existingIds.length > 0) {
-                        const firstId = parseInt(existingIds[0]);
-                        
-                        // สร้าง ID ที่คาดการณ์ได้สำหรับ sticker ใน pack
-                        for (let i = 0; i < 40; i++) {
-                            const predictedId = firstId + i;
-                            
-                            for (const baseUrl of baseUrls) {
-                                const testUrl = `${baseUrl}/${predictedId}/android/sticker.png`;
-                                if (!previewImages.includes(testUrl)) {
-                                    previewImages.push(testUrl);
-                                    stickerIds.push(predictedId.toString());
-                                    
-                                    if (previewImages.length >= 40) break;
-                                }
-                            }
-                            if (previewImages.length >= 40) break;
-                        }
-                    }
-                }
-
-                console.log(`Total images extracted: ${previewImages.length}`);
-                console.log('Preview images:', previewImages);
-                
-                return { previewImages, stickerIds };
-                
-            } catch (error) {
-                console.error('Error in extractStickerImages:', error);
-                return { previewImages: [], stickerIds: [] };
-            }
         }
 
         async function initializeLiff() {
@@ -803,8 +650,7 @@
                             price: `${priceTHB} THB`,
                             description,
                             stickerType: detectStickerType(author),
-                            stickerFormat: stickerFormat,
-                            htmlText: htmlText
+                            stickerFormat: stickerFormat
                         };
 
                         if (!selectedLang) {
@@ -820,17 +666,60 @@
                 }
 
                 const data = regionData[selectedLang];
-                const { title, author, description, stickerType, htmlText } = data;
+                const { title, author, description, stickerType } = data;
 
                 let priceDisplay = parseFloat(priceTHB) === 0 ? '0' : `${Math.floor(parseFloat(priceTHB))}`;
                 let coinValue = parseInt(coins);
 
-                // ใช้ฟังก์ชันใหม่ในการดึงภาพ
-                console.log('Extracting sticker images...');
-                const { previewImages, stickerIds } = extractStickerImages(htmlText, stickerId);
-                
-                console.log(`Found ${previewImages.length} preview images`);
-                console.log(`Found ${stickerIds.length} sticker IDs`);
+                let previewImages = [];
+                let stickerIds = [];
+                const htmlText = await fetchStickerPage(stickerId, selectedLang);
+                const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+                const stickerWrap = doc.querySelector('.mdCMN09Ul.FnStickerList');
+                if (stickerWrap) {
+                    const items = stickerWrap.querySelectorAll('.FnStickerPreviewItem');
+                    items.forEach(item => {
+                        const dataPreview = item.getAttribute('data-preview');
+                        if (dataPreview) {
+                            try {
+                                const parsed = JSON.parse(dataPreview.replace(/'/g, '"'));
+                                const url = parsed.staticUrl || parsed.popupUrl || parsed.animationUrl || parsed.soundUrl || parsed.effectUrl || '';
+                                if (url.includes('stickershop')) {
+                                    previewImages.push(url);
+                                    stickerIds.push(parsed.id || '');
+                                    console.log(`Sticker ID: ${parsed.id}, Selected URL: ${url}`);
+                                }
+                            } catch (error) {
+                                console.error('JSON parse error:', error.message);
+                            }
+                        }
+                    });
+                }
+
+                if (!previewImages.length) {
+                    console.log('No preview images found in .FnStickerList, trying fallback method');
+                    const images = doc.querySelectorAll('img[src*="stickershop"], [style*="stickershop"]');
+                    previewImages = Array.from(images)
+                        .map(element => {
+                            if (element.tagName === 'IMG' && element.src.includes('stickershop')) {
+                                return element.src;
+                            }
+                            const style = element.style.backgroundImage;
+                            const match = style.match(/url\(["']?(.+?)["']?\)/);
+                            return match && match[1].includes('stickershop') ? match[1] : '';
+                        })
+                        .filter(src => src && (
+                            src.includes('sticker/') ||
+                            src.includes('sticker_animation/') ||
+                            src.includes('sticker_popup/') ||
+                            src.includes('sticker_effect/')
+                        ));
+                    stickerIds = previewImages
+                        .map(src => src.match(/sticker\/(\d+)/)?.[1] || '')
+                        .filter(id => id);
+                }
+
+                const finalPreviewImages = previewImages.slice(0, 40);
 
                 const escapedTitle = escapeHtml(title);
                 const escapedAuthor = escapeHtml(author);
@@ -852,18 +741,6 @@
                     }
                 }
 
-                // สร้าง gallery HTML สำหรับภาพตัวอย่าง
-                let galleryHtml = '';
-                if (previewImages.length > 0) {
-                    const displayImages = previewImages.slice(0, 40); // แสดงสูงสุด 40 ภาพ
-                    galleryHtml = displayImages.map((src, i) => {
-                        const stickerId = stickerIds[i] || 'N/A';
-                        return `<img src="${src}" alt="Sticker ${i + 1}" title="Sticker ID: ${stickerId}" loading="lazy" onerror="this.style.display='none'">`;
-                    }).join('');
-                } else {
-                    galleryHtml = '<p style="grid-column: 1 / -1; text-align: center; color: #999;">ไม่พบตัวอย่างสติกเกอร์</p>';
-                }
-
                 resultDiv.innerHTML = `
                     <img id="stickerImage" src="${imageUrl}" alt="Sticker Image" onerror="this.src='https://via.placeholder.com/180'">
                     <p><strong>ชื่อสติกเกอร์:</strong> ${title}</p>
@@ -871,7 +748,7 @@
                     <p><strong>ประเภท:</strong> ${stickerType}</p>
                     <p><strong>รูปแบบ:</strong> ${stickerFormat}</p>
                     <p><strong>Sticker ID:</strong> ${stickerId}</p>
-                    <p><strong>จำนวนสติกเกอร์:</strong> ${previewImages.length > 0 ? previewImages.length : 'ไม่พบข้อมูล'}</p>
+                    <p><strong>จำนวนสติกเกอร์:</strong> ${stickerIds.length || 'ไม่พบข้อมูล'}</p>
                     <p><strong>รายละเอียด:</strong> ${description}</p>
                     <p><strong>ราคา:</strong> ${priceDisplay} THB ${coinValue > 0 ? `<img src="https://aliyahaunjo.github.io/image/LINE-COIN.png" class="coin-icon" alt="LINE Coin"> ${coinValue} Coin` : ''}</p>
                     <button onclick="openSticker('https://store.line.me/stickershop/product/${stickerId}/${selectedLang}')">ดู Sticker ในเบราว์เซอร์</button>
@@ -879,36 +756,18 @@
                     <button onclick="shareSticker('https://store.line.me/stickershop/product/${stickerId}/${selectedLang}', '${escapedTitle}', '${escapedAuthor}', ${coinValue}, '${imageUrl}', '${escapedStickerType}', '${escapedStickerFormat}', '${priceDisplay}')">แชร์ Sticker</button>
                     <h4>ข้อมูลตามภูมิภาค</h4>
                     ${regionInfoHtml}
-                    <h4>ตัวอย่างสติกเกอร์ (${previewImages.length} ภาพ)</h4>
+                    <h4>ตัวอย่างสติกเกอร์</h4>
                     <div id="previewGallery">
-                        ${galleryHtml}
+                        ${finalPreviewImages.length ? finalPreviewImages.map((src, i) => `<img src="${src}" alt="Sticker ${i + 1}" title="ID: ${stickerIds[i] || 'N/A'}">`).join('') : '<p>ไม่มีตัวอย่าง</p>'}
                     </div>
-                    ${stickerIds.length > 0 ? `<p><strong>รหัสสติกเกอร์:</strong> ${stickerIds.slice(0, 10).join(', ')}${stickerIds.length > 10 ? ` และอีก ${stickerIds.length - 10} รายการ` : ''}</p>` : ''}
+                    ${stickerIds.length > 0 ? `<p>รหัสสติกเกอร์: ${stickerIds.slice(0, 10).join(', ')}${stickerIds.length > 10 ? ' ...' : ''}</p>` : ''}
                 `;
-
-                // เพิ่ม event listener สำหรับการคลิกภาพเพื่อดูขนาดใหญ่
-                const galleryImages = resultDiv.querySelectorAll('#previewGallery img');
-                galleryImages.forEach(img => {
-                    img.addEventListener('click', function() {
-                        Swal.fire({
-                            imageUrl: this.src,
-                            imageAlt: this.alt,
-                            title: this.title,
-                            showCloseButton: true,
-                            showConfirmButton: false,
-                            customClass: {
-                                image: 'custom-swal-image'
-                            }
-                        });
-                    });
-                });
-
             } catch (error) {
                 console.error('Search error:', error.message);
                 resultDiv.innerHTML = `
                     <p>เกิดข้อผิดพลาด: ${error.message}</p>
                     <p>ลอง ID อื่น: <button onclick="document.getElementById('stickerId').value='8373';searchSticker()">8373</button></p>
-                    <button onclick="document.getElementById('stickerId').value='';document.getElementById('result').innerHTML='';">ค้นหาใหม่</button>
+                    <button onclick="document.getElementById('stickerId').value='';resultDiv.innerHTML='';">ค้นหาใหม่</button>
                 `;
             } finally {
                 loadingSearch.style.display = 'none';
@@ -1005,7 +864,6 @@
                 });
             } finally {
                 document.getElementById('shareLoader').style.display = 'none';
-                document.getElementById('main').style.display = 'block';
             }
         }
 
@@ -1058,12 +916,5 @@
             });
         };
     </script>
-    <style>
-        .custom-swal-image {
-            max-width: 90vw !important;
-            max-height: 80vh !important;
-            object-fit: contain;
-        }
-    </style>
 </body>
 </html>
