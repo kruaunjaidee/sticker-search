@@ -515,14 +515,6 @@
                             justifyContent: coins > 0 ? "flex-start" : "center"
                         },
                         {
-                            type: "text",
-                            text: "ราคาเปลี่ยนแปลงตามโปรโมชั่น",
-                            size: "xs",
-                            color: "#666666",
-                            align: "center",
-                            margin: "sm"
-                        },
-                        {
                             type: "button",
                             style: "primary",
                             color: "#FF4444",
@@ -864,6 +856,7 @@
                 });
             } finally {
                 document.getElementById('shareLoader').style.display = 'none';
+                document.getElementById('main').style.display = 'block';
             }
         }
 
@@ -879,7 +872,6 @@
             const priceTHB = urlParams.get('priceTHB') || '0';
 
             if (url && title && author && imageUrl) {
-                document.getElementById('preloader').style.display = 'none';
                 document.getElementById('main').style.display = 'none';
                 document.getElementById('shareLoader').style.display = 'flex';
                 await shareSticker(
